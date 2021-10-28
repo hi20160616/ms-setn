@@ -66,7 +66,7 @@ func getLinks(rawurl string) ([]string, error) {
 		return nil, errors.WithMessagef(err, "[%s] cannot extract links from %s",
 			configs.Data.MS["setn"].Title, rawurl)
 	} else {
-		links = linksFilter(links, `https://tw.setn.com/\w+/\d+/.*`)
+		links = linksFilter(links, `https://www.setn.com/News.aspx\?NewsID=\d+`)
 		return gears.StrSliceDeDupl(links), nil
 	}
 }

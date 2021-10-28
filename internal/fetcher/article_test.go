@@ -14,8 +14,8 @@ func TestFetchTitle(t *testing.T) {
 		url   string
 		title string
 	}{
-		{"https://tw.setn.com/local/20211015/EJNCNTZMQVE5TE2PHRHB5MN3HY/", "K律師論點｜城中城大火若是人禍　究責關鍵先釐清這事"},
-		{"https://tw.setn.com/politics/20211012/GTRJUAUOXBAUXIIQZEAR72XHSI/", "網傳綠營大老舔共文　讚「兩岸只有親情和恩情」？當事人說話了"},
+		{"https://www.setn.com/News.aspx?NewsID=1014270", "激瘦秘密就是PP塑崩褲！《驕女》春滿大尺寸也穿得下 | 生活"},
+		{"https://www.setn.com/News.aspx?NewsID=1018311", "五倍券消費滿額送好禮sodastream氣泡水機超划算 | 生活"},
 	}
 	for _, tc := range tests {
 		a := NewArticle()
@@ -50,8 +50,8 @@ func TestFetchUpdateTime(t *testing.T) {
 		url  string
 		want string
 	}{
-		{"https://tw.setn.com/local/20211015/EJNCNTZMQVE5TE2PHRHB5MN3HY/", "2021-10-15 16:13:47.476 +0800 UTC"},
-		{"https://tw.setn.com/politics/20211012/GTRJUAUOXBAUXIIQZEAR72XHSI/", "2021-10-12 20:36:20.657 +0800 UTC"},
+		{"https://www.setn.com/News.aspx?NewsID=1014270", "2021-10-19 17:00:00 +0000 UTC"},
+		{"https://www.setn.com/News.aspx?NewsID=1018311", "2021-10-28 13:00:00 +0000 UTC"},
 	}
 	var err error
 	for _, tc := range tests {
@@ -72,7 +72,7 @@ func TestFetchUpdateTime(t *testing.T) {
 			}
 		}
 		ttt := tt.AsTime()
-		got := shanghai(ttt)
+		got := ttt
 		if got.String() != tc.want {
 			t.Errorf("\nwant: %s\n got: %s", tc.want, got.String())
 		}
@@ -84,10 +84,8 @@ func TestFetchContent(t *testing.T) {
 		url  string
 		want string
 	}{
-		{"https://tw.setn.com/property/20211021/2ICEHGCCWRFNXOLYWGGHGEIJDA/", "K律師論點｜城中城大火若是人禍　究責關鍵先釐清這事"},
-		{"https://tw.setn.com/local/20211015/EJNCNTZMQVE5TE2PHRHB5MN3HY/", "K律師論點｜城中城大火若是人禍　究責關鍵先釐清這事"},
-		{"https://tw.setn.com/politics/20211012/GTRJUAUOXBAUXIIQZEAR72XHSI/", "網傳綠營大老舔共文　讚「兩岸只有親情和恩情」？當事人說話了"},
-		{"https://tw.setn.com/property/20211025/SARWV3SGOZALZJVUMBLTSM6EYI/", ""},
+		{"https://www.setn.com/News.aspx?NewsID=1014270", "激瘦秘密就是PP塑崩褲！《驕女》春滿大尺寸也穿得下 | 生活"},
+		{"https://www.setn.com/News.aspx?NewsID=1018311", "五倍券消費滿額送好禮sodastream氣泡水機超划算 | 生活"},
 	}
 	var err error
 
@@ -115,9 +113,8 @@ func TestFetchArticle(t *testing.T) {
 		url string
 		err error
 	}{
-		{"https://tw.setn.com/local/20211015/EJNCNTZMQVE5TE2PHRHB5MN3HY/", ErrTimeOverDays},
-		{"https://tw.setn.com/property/20211021/2ICEHGCCWRFNXOLYWGGHGEIJDA/", ErrTimeOverDays},
-		{"https://tw.setn.com/property/20211025/SARWV3SGOZALZJVUMBLTSM6EYI/", nil},
+		{"https://www.setn.com/News.aspx?NewsID=1014270", ErrTimeOverDays},
+		{"https://www.setn.com/News.aspx?NewsID=1018311", nil},
 	}
 	for _, tc := range tests {
 		a := NewArticle()

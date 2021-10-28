@@ -1,10 +1,11 @@
 package fetcher
 
 import (
+	"bytes"
 	"context"
 	"crypto/md5"
-	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/url"
 	"regexp"
@@ -35,6 +36,7 @@ type Article struct {
 }
 
 var ErrTimeOverDays error = errors.New("article update time out of range")
+var ErrIgnoreCate error = errors.New("article is ignored by category")
 
 func NewArticle() *Article {
 	return &Article{
@@ -195,7 +197,14 @@ func (a *Article) fetchTitle() (string, error) {
 			configs.Data.MS["setn"].Title)
 	}
 	title := n[0].FirstChild.Data
-	rp := strings.NewReplacer(" ｜ 蘋果新聞網 ｜ 蘋果日報", "")
+	ignores := []string{"| 生活", "| 汽車", "| 健康", "| 新奇", "富房網",
+		"| 娛樂", "| 寶島神很大", "| 運動", "│ 女孩", "| 寵物"}
+	for _, v := range ignores {
+		if strings.Contains(title, v) {
+			return "ignore", ErrIgnoreCate
+		}
+	}
+	rp := strings.NewReplacer(" | 三立新聞網", "", "  SETN.COM", "")
 	title = strings.TrimSpace(rp.Replace(title))
 	return gears.ChangeIllegalChar(title), nil
 }
@@ -216,7 +225,7 @@ func (a *Article) fetchUpdateTime() (*timestamppb.Timestamp, error) {
 	for _, nn := range n {
 		for _, x := range nn.Attr {
 			if x.Key == "content" {
-				t, err = time.Parse(time.RFC3339, x.Val)
+				t, err = time.Parse("2006-01-02T15:04:05", x.Val)
 				if err != nil {
 					return nil, errors.WithMessage(err,
 						"caught meta but no content matched.")
@@ -241,44 +250,36 @@ func (a *Article) fetchContent() (string, error) {
 		return "", errors.Errorf("[%s] fetchContent: doc is nil: %s", configs.Data.MS["setn"].Title, a.U.String())
 	}
 	body := ""
-	bodyN := exhtml.ElementsByTagAndId(a.doc, "script", "fusion-metadata")
+	bodyN := exhtml.ElementsByTagAndId(a.doc, "div", "Content1")
 	if len(bodyN) == 0 {
 		return body, errors.Errorf("no article content matched: %s", a.U.String())
 	}
 	// Fetch content
-	bodyJs := func() string {
-		for _, v := range bodyN {
-			if v.FirstChild != nil && v.FirstChild.Type == html.TextNode {
-				return v.FirstChild.Data
+	for _, n := range bodyN {
+		var buf bytes.Buffer
+		w := io.Writer(&buf)
+		exhtml.ElementsRmByTag(n, "div")
+		ps := exhtml.ElementsByTag(n, "p")
+		for _, p := range ps {
+			if err := html.Render(w, p); err != nil {
+				return "", errors.WithMessagef(err, "node render to bytes fail: %s", a.U.String())
 			}
+			re := regexp.MustCompile(`<p .+?>*?</p>`)
+			if !re.Match(buf.Bytes()) {
+				repl := strings.NewReplacer("<p>", "", "</p>", "", "「", "“", "」", "”")
+				x := repl.Replace(buf.String())
+				re = regexp.MustCompile(`(?m)<b.*?>(?P<x>.*?)</b>`)
+				x = re.ReplaceAllString(x, "**${x}**")
+				re = regexp.MustCompile(`(?m)<strong>(?P<x>.*?)</strong>`)
+				x = re.ReplaceAllString(x, "**${x}**")
+				re = regexp.MustCompile(`(?m)<a href="(?P<href>.*?)".*?>(?P<x>.*?)</a>`)
+				x = re.ReplaceAllString(x, "[${x}](https://www.setn.com${href})")
+				if strings.TrimSpace(x) != "" {
+					body += x + "  \n"
+				}
+			}
+			buf.Reset()
 		}
-		return ""
-	}()
-
-	re := regexp.MustCompile(`(?m)Fusion\.globalContent=(?P<x>.*?);Fusion.globalContentConfig={"source":"`)
-	if !re.MatchString(bodyJs) {
-		return "", fmt.Errorf("nil content matched: %s", a.U.String())
-	}
-	rs := re.FindStringSubmatch(bodyJs)
-	c := struct {
-		Content_elements []struct {
-			Content string `json:"content"`
-		} `json:"content_elements"`
-	}{}
-	if err := json.Unmarshal([]byte(rs[1]), &c); err != nil {
-		return "", err
-	}
-
-	for _, v := range c.Content_elements {
-		re := regexp.MustCompile(`(?m)<mark .*?>(?P<x>.*?)</mark>`)
-		x := re.ReplaceAllString(v.Content, "${x}")
-		re = regexp.MustCompile(`(?m)<b>(?P<x>.*?)</b>`)
-		x = re.ReplaceAllString(x, "**${x}**")
-		re = regexp.MustCompile(`(?m)<a href="(?P<href>.*?)">(?P<x>.*?)</a>`)
-		x = re.ReplaceAllString(x, "[${x}](${href})")
-		x = strings.ReplaceAll(x, "「", "“")
-		x = strings.ReplaceAll(x, "」", "”")
-		body += x + "  \n"
 	}
 	return body, nil
 }
@@ -286,7 +287,8 @@ func (a *Article) fetchContent() (string, error) {
 func (a *Article) fmtContent(body string) (string, error) {
 	var err error
 	title := "# " + a.Title + "\n\n"
-	lastupdate := shanghai(a.UpdateTime.AsTime()).Format(time.RFC3339)
+	// lastupdate := shanghai(a.UpdateTime.AsTime()).Format(time.RFC3339)
+	lastupdate := a.UpdateTime.AsTime().Format(time.RFC3339)
 	webTitle := fmt.Sprintf(" @ [%s](/list/?v=%[1]s): [%[2]s](http://%[2]s)", a.WebsiteTitle, a.WebsiteDomain)
 	u, err := url.QueryUnescape(a.U.String())
 	if err != nil {
