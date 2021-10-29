@@ -225,7 +225,7 @@ func (a *Article) fetchUpdateTime() (*timestamppb.Timestamp, error) {
 	for _, nn := range n {
 		for _, x := range nn.Attr {
 			if x.Key == "content" {
-				t, err = time.Parse("2006-01-02T15:04:05", x.Val)
+				t, err = time.Parse(time.RFC3339, x.Val+"+08:00")
 				if err != nil {
 					return nil, errors.WithMessage(err,
 						"caught meta but no content matched.")

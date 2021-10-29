@@ -50,8 +50,8 @@ func TestFetchUpdateTime(t *testing.T) {
 		url  string
 		want string
 	}{
-		{"https://www.setn.com/News.aspx?NewsID=1014270", "2021-10-19 17:00:00 +0000 UTC"},
-		{"https://www.setn.com/News.aspx?NewsID=1018311", "2021-10-28 13:00:00 +0000 UTC"},
+		{"https://www.setn.com/News.aspx?NewsID=1014270", "2021-10-19 17:00:00 +0800 UTC"},
+		{"https://www.setn.com/News.aspx?NewsID=1018311", "2021-10-28 13:00:00 +0800 UTC"},
 	}
 	var err error
 	for _, tc := range tests {
@@ -72,7 +72,7 @@ func TestFetchUpdateTime(t *testing.T) {
 			}
 		}
 		ttt := tt.AsTime()
-		got := ttt
+		got := shanghai(ttt)
 		if got.String() != tc.want {
 			t.Errorf("\nwant: %s\n got: %s", tc.want, got.String())
 		}
